@@ -9,6 +9,8 @@ Attached, you can find an R script with instructions on how to use the CCSR tool
 You can download the official CCSR zip package for diagnosis and procedure codes using the following websites:
 
   For ICD-10-CM Diagnosis codes: https://hcup-us.ahrq.gov/toolssoftware/ccsr/dxccsr.jsp#download
+  
   For ICD-10-PCS Procedure codes: https://hcup-us.ahrq.gov/toolssoftware/ccsr/prccsr.jsp#overview
+   
    -Download zip file in the "Downloading Information for the Tool and Documentation" section from both pages
   
