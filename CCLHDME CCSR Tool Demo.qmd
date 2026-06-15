@@ -1,0 +1,169 @@
+---
+title: "CCLHDME CCSR Tool Demo"
+format: html
+editor: visual
+---
+
+## CCLHDME CCSR Tool Demo
+
+Load libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+```
+
+Load sample HCAI PDD data, CCSR categories, and CCSR reference details
+
+```{r}
+#synthetic data for example
+sample_data <- read_xlsx("G:\\Public Health\\LHNC\\Epidemiology Team\\Fellow Projects\\Alejandra Cal-EIS 2025-2026\\CCLHDME Tool Demo\\Sample_HCAI_Data.xlsx")
+
+#download file and sheet that contains the CCSR translations 
+CCSR_full <- read_xlsx("G:\\Public Health\\LHNC\\Epidemiology Team\\Fellow Projects\\Alejandra Cal-EIS 2025-2026\\CCLHDME Tool Demo\\CCSR References\\Diagnosis and External Cause Codes\\DXCCSR-Reference-File-v2025-1.xlsx", sheet = 4)
+```
+
+Fixing column names:
+
+```{r}
+################### DO NOT RUN MORE THAN ONCE #################
+colnames(CCSR_full) <- CCSR_full[1, ]
+CCSR_full <- CCSR_full[-c(1), ]
+#you can also just manually delete the first row heading from the excel sheet in the CCSR tool
+
+##renaming the column, can rename other columns here
+colnames(CCSR_full)[colnames(CCSR_full) == "ICD-10-CM Code"] <- "ICD_10_Code" 
+```
+
+Restricting CCSR to only Inpatient default codes since we are working with hospitalization data
+
+```{r}
+clean_CCSR_full <- CCSR_full %>%
+  filter(`Inpatient Default CCSR (Y/N/X)`== "Y" | `Inpatient Default CCSR (Y/N/X)`== "X") #x for external cause codes
+```
+
+CCSR mapping tool for ICD-10-CM codes to CCSR Categories: Good for identifying body systems but will still need to be translated to the category description file using join for full name of diagnosis
+
+```{r}
+#creating the map
+ccsr_map <- setNames(clean_CCSR_full$`CCSR Category`, clean_CCSR_full$ICD_10_Code)
+
+#identify which columns need to be translated
+colnames(sample_data)
+
+#creating new dataset so that original is unedited
+sample_data_ccsr <- sample_data
+
+#applying map to the data
+sample_data_ccsr[2:8] <- lapply(sample_data[2:8], function(col){
+  as.character(ccsr_map[as.character(col)])
+})
+```
+
+CCSR mapping tool for ICD-10-CM codes to CCSR Category Description
+
+```{r}
+#same thing as above
+ccsr_des_map <- setNames(clean_CCSR_full$`CCSR Category Description`, clean_CCSR_full$ICD_10_Code)
+
+sample_data_ccsr_des <- sample_data
+
+sample_data_ccsr_des[2:8] <- lapply(sample_data[2:8], function(col){
+  as.character(ccsr_des_map[as.character(col)])
+})
+```
+
+### EXAMPLES
+
+#### Diagnosis Columns
+
+Looking at primary diagnosis column using CCSR category description
+
+```{r}
+pri_diag_freq <- sample_data_ccsr_des %>%
+  group_by(diag_p)%>%
+  summarize(count= n())
+```
+
+Looking through all diagnosis columns
+
+```{r}
+#identifying columns that need to be translated
+colnames(sample_data_ccsr_des)
+
+#pivoting longer so that each diagnosis can be counted
+all_diag_freq <- sample_data_ccsr_des %>%
+  pivot_longer(
+    cols = c(2:5),
+    values_to = "diagnosis"
+  ) %>%
+  group_by(diagnosis)%>%
+  summarize(count= n())
+```
+
+#### External Cause Codes
+
+First column:
+
+```{r}
+pri_ecm_freq <- sample_data_ccsr_des %>%
+  group_by(ecm1)%>%
+  summarize(count= n())
+```
+
+All columns:
+
+```{r}
+colnames(sample_data_ccsr_des)
+
+all_ecm_freq <- sample_data_ccsr_des %>%
+  pivot_longer(
+    cols = c(6:8),
+    values_to = "ext_cause_codes"
+  ) %>%
+  group_by(ext_cause_codes)%>%
+  summarize(count= n())
+```
+
+#### Procedure Codes
+
+Load in the CCSR for procedures
+
+```{r}
+prccsr <- read_xlsx("G:\\Public Health\\LHNC\\Epidemiology Team\\Fellow Projects\\Alejandra Cal-EIS 2025-2026\\CCLHDME Tool Demo\\CCSR References\\Procedure codes\\PRCCSR-ReferenceFile-v2026-1.xlsx", sheet = 5)
+```
+
+Creating the map
+
+```{r}
+ccsr_pcs_map <- setNames(prccsr$`CCSR Procedure Category Description`, prccsr$'ICD-10-PCS Code')
+
+sample_data_ccsr_des[9:11] <- lapply(sample_data_ccsr_des[9:11], function(col){
+  as.character(ccsr_pcs_map[as.character(col)])
+})
+```
+
+Getting counts for primary procedure
+
+```{r}
+pri_proc_freq <- sample_data_ccsr_des %>%
+  group_by(proc_p) %>%
+  summarise(counts = n())
+```
+
+Getting counts for all procedure fields
+
+```{r}
+all_proc_freq <- sample_data_ccsr_des %>%
+  pivot_longer(
+    cols = c(9:11),
+    values_to = "proc_codes"
+  ) %>%
+  group_by(proc_codes)%>%
+  summarize(count= n())
+```
+
+```{r}
+
+```
